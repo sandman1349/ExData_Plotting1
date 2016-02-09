@@ -30,7 +30,7 @@ typeyeargroup <- summarize(sources, sum(Emissions, na.rm=TRUE))
 colnames(typeyeargroup) <- c("Year","Type", "Emissions")
 library(ggplot2)
 png("plot3.png",width=480,height=480)
-g <- qplot(Year, Emissions,data=typeyeargroup, size=5, colour = Type, xlab="Year",ylab="Emissions",main="Baltimore Emissions over Time by Type")
+g <- qplot(Year, Emissions,data=typeyeargroup,  colour = Type, geom= "line", xlab= "Year",ylab="Emissions",main="Baltimore Emissions over Time by Type")
 g <- g + theme(axis.title=element_text(face="bold.italic", 
                                      size="12"), legend.position="bottom")
 g
@@ -89,3 +89,77 @@ plot(Balyearly$Year,Balyearly$Emissions,type="l",xlab = "Year", ylab = "Emission
 dev.off()
 
 ## ANSWER: LA has seen an increase in motor vehicle emissions while Baltimore has decreased.
+
+
+## better version of question 3: 
+
+balt=pm[pm$fips=="24510",]
+balt2=aggregate(balt$Emissions, by=list(balt$type, balt$year), sum)
+names(balt2)=c("pollutant_type", "year", "value")
+
+png(filename="plot3.png", width=600, height=480)
+G=ggplot(balt2, aes(year, value))
+G+geom_point(size=4) +geom_smooth(method="lm",se=TRUE)+
+  facet_grid(.~pollutant_type)+ylab("Tons of PM2.5 Emissions")+
+  ggtitle("Baltimore PM2.5 Emissions by Source")
+dev.off()
+
+
+## better version of question 4 
+
+#extract out codes related to coal combustion
+coalvals=grep("Coal", scc$EI.Sector)
+x=scc$EI.Sector[coalvals]
+table(factor(x))
+coalscc=scc$SCC[x]
+#extract out values from pm for coal scc
+coal=pm[pm$SCC %in% coalscc,]
+coal2=aggregate(coal$Emissions, list(coal$year), sum)
+colnames(coal2)=c("year", "emissions")
+#create plot
+
+png(filename="plot4.png", width=480, height=480)
+G=ggplot(coal2, aes(year, emissions))
+G+geom_point(size=4) +geom_smooth(method="lm",se=TRUE)+
+  ylab("Tons of PM2.5 Emissions")+ggtitle("Coal PM2.5 Emissions by Year")
+dev.off()
+
+
+
+## better version of question 6
+
+
+#Read Data in
+setwd("C:\\Users\\Diane\\Documents\\gitRepo\\ExploratoryDataAnalysis_project2")
+datfile="https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip"
+destfile="dat.zip"
+download.file(datfile, destfile)
+zipList=unzip(destfile, list=TRUE)
+unzip(destfile)
+pm= readRDS("summarySCC_PM25.rds")
+scc=readRDS("Source_Classification_Code.rds")
+
+#Question 6
+#Compare emissions from motor vehicle sources in Baltimore City 
+#with emissions from motor vehicle sources in Los Angeles County, 
+#California (fips == "06037"). Which city has seen greater changes 
+#over time in motor vehicle emissions?
+
+#Extract out motor vehicle source data
+mobile=scc[scc$SCC.Level.One=="Mobile Sources",]
+mobile2=mobile[mobile$SCC.Level.Two %in% c("Highway Vehicles - Diesel", "Highway Vehicles - Gasoline"),]
+sccs=mobile2$SCC
+#Extract out data from Baltimore and from motor vehicles
+cities=pm[pm$fips %in% c("24510", "06037") & pm$SCC %in% sccs,]
+cities$city=ifelse(cities$fips=="24510", "Baltimore", "Los Angeles")
+
+#aggregate data
+cityagg=aggregate(cities$Emissions, list(cities$year, cities$city), sum)
+colnames(cityagg)=c("year", "county","emissions")
+#create plot
+png(filename="plot6.png", width=480, height=480)
+G=ggplot(cityagg, aes(year, emissions))
+G+geom_point(size=4) +geom_smooth(method="lm",se=TRUE)+
+  facet_grid(.~county)+
+  ylab("Tons of PM2.5 Emissions")+ggtitle("Motor Vehicle PM2.5 Emissions")
+dev.off()
